@@ -6,7 +6,13 @@ const OpenAI = require("openai");
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
+
 const users = new Set();
 
 const openai = new OpenAI({
@@ -16,7 +22,13 @@ const openai = new OpenAI({
 app.use(express.static("public"));
 
 io.on("connection", (socket) => {
-    console.log("User connected.");
+    console.log("A user connected.");
+
+    socket.on("set username", (username) => {
+        socket.username = username;
+        users.add(username);
+        io.emit("user list", Array.from(users));
+    });
 
     socket.on("chat message", async (msgData) => {
         console.log(`Message from ${msgData.user}: ${msgData.text}`);
@@ -27,12 +39,6 @@ io.on("connection", (socket) => {
         } else {
             io.emit("chat message", msgData);
         }
-    });
-
-    socket.on("set username", (username) => {
-        socket.username = username;
-        users.add(username);
-        io.emit("user list", Array.from(users));
     });
 
     socket.on("disconnect", () => {
@@ -55,6 +61,7 @@ async function getChatGPTResponse(userMessage) {
     }
 }
 
-server.listen(3000, () => {
-    console.log("Server running on port 3000");
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
 });
